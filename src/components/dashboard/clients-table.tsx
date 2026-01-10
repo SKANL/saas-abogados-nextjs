@@ -32,6 +32,17 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
 
 type ClientStatus = 'pending' | 'completed' | 'expired'
 
@@ -55,6 +66,11 @@ const statusConfig: Record<ClientStatus, { label: string; variant: "default" | "
 
 export function ClientsTable() {
   const [search, setSearch] = React.useState("")
+  const [deleteDialog, setDeleteDialog] = React.useState<{ open: boolean; clientId: string; clientName: string }>({ 
+    open: false, 
+    clientId: "", 
+    clientName: "" 
+  })
   const { clients, loading, remove } = useClients()
   
   const filteredClients = React.useMemo(() => {
@@ -67,16 +83,44 @@ export function ClientsTable() {
     )
   }, [clients, search])
 
-  const handleCopyLink = async (clientId: string) => {
-    // For now, use client ID as link token - should be fetched from client_links
-    const url = `${window.location.origin}/sala/${clientId}`
+  const handleCopyLink = async (client: any) => {
+    // Get the magic link token from client_links
+    const clientLinks = client.client_links
+    if (!clientLinks || clientLinks.length === 0) {
+      alert("Este cliente no tiene un enlace generado. Por favor, contacta al soporte.")
+      return
+    }
+    
+    // Get the first active (non-revoked) link
+    const activeLink = clientLinks.find((link: any) => !link.revoked_at)
+    if (!activeLink) {
+      alert("No hay enlaces activos para este cliente.")
+      return
+    }
+    
+    const url = `${window.location.origin}/sala/${activeLink.magic_link_token}`
     await navigator.clipboard.writeText(url)
     // TODO: Show toast notification
+    alert("Enlace copiado al portapapeles")
   }
 
-  const handleDelete = async (clientId: string) => {
-    if (!confirm("¿Estás seguro de eliminar esta sala?")) return
-    await remove(clientId)
+  const handleDeleteClick = (clientId: string, clientName: string) => {
+    setDeleteDialog({ open: true, clientId, clientName })
+  }
+
+  const handleDeleteConfirm = async () => {
+    const { clientId } = deleteDialog
+    setDeleteDialog({ open: false, clientId: "", clientName: "" })
+    
+    const loadingToast = toast.loading("Eliminando sala...")
+    const success = await remove(clientId)
+    toast.dismiss(loadingToast)
+    
+    if (success) {
+      toast.success("Sala eliminada correctamente")
+    } else {
+      toast.error("Error al eliminar la sala")
+    }
   }
 
   if (loading) {
@@ -163,13 +207,13 @@ export function ClientsTable() {
                               Ver expediente
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleCopyLink(client.id)}>
+                          <DropdownMenuItem onClick={() => handleCopyLink(client)}>
                             <Copy className="mr-2 h-4 w-4" />
                             Copiar enlace
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onClick={() => handleDelete(client.id)}
+                            onClick={() => handleDeleteClick(client.id, client.client_name)}
                             className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -185,6 +229,24 @@ export function ClientsTable() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar sala?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estás a punto de eliminar la sala de <strong>{deleteDialog.clientName}</strong>.
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

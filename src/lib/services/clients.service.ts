@@ -53,11 +53,16 @@ export const clientsService: IClientsService = {
       const { count } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
+        .is('deleted_at', null)
 
       // Get paginated data
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          client_links(*)
+        `)
+        .is('deleted_at', null)
         .order(orderBy, { ascending: orderDirection === 'asc' })
         .range(from, to)
 
@@ -108,7 +113,10 @@ export const clientsService: IClientsService = {
           ),
           client_links(*),
           client_documents(*),
-          client_answers(*)
+          client_answers(
+            *,
+            question:questions(*)
+          )
         `)
         .eq('id', id)
         .single()
@@ -163,6 +171,27 @@ export const clientsService: IClientsService = {
           data: null,
           error: createError('DB_ERROR', error.message, error),
         }
+      }
+
+      // Generate magic link token automatically
+      if (data) {
+        const expirationDays = clientData.expiration_days || 7
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + expirationDays)
+
+        // Generate secure token
+        const array = new Uint8Array(32)
+        crypto.getRandomValues(array)
+        const token = Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('')
+
+        // Create the client link
+        await supabase.from('client_links').insert({
+          client_id: data.id,
+          user_id: user.id,
+          magic_link_token: token,
+          expires_at: expiresAt.toISOString(),
+          access_count: 0,
+        })
       }
 
       return { data, error: null }

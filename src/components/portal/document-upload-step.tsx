@@ -1,12 +1,16 @@
 "use client"
 
 import * as React from "react"
-import { Upload, Check, X, FileText } from "lucide-react"
+import { Upload, Check, FileText, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface DocumentUploadStepProps {
+  clientId: string
+  linkId: string
   documentsRequired: string[]
   uploadedDocs: Record<string, File>
   onUpload: (docName: string, file: File) => void
@@ -15,6 +19,8 @@ interface DocumentUploadStepProps {
 }
 
 export function DocumentUploadStep({
+  clientId,
+  linkId,
   documentsRequired,
   uploadedDocs,
   onUpload,
@@ -22,6 +28,8 @@ export function DocumentUploadStep({
   onBack,
 }: DocumentUploadStepProps) {
   const fileInputRefs = React.useRef<Record<string, HTMLInputElement | null>>({})
+  const [isUploading, setIsUploading] = React.useState(false)
+  const [uploadProgress, setUploadProgress] = React.useState(0)
 
   const allUploaded = documentsRequired.every((doc) => uploadedDocs[doc])
 
@@ -39,6 +47,53 @@ export function DocumentUploadStep({
     }
   }
 
+  const handleSubmit = async () => {
+    if (!allUploaded) {
+      toast.error("Por favor sube todos los documentos requeridos")
+      return
+    }
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    try {
+      const totalDocs = documentsRequired.length
+      let uploadedCount = 0
+
+      for (const docName of documentsRequired) {
+        const file = uploadedDocs[docName]
+        if (!file) continue
+
+        const formData = new FormData()
+        formData.append('clientId', clientId)
+        formData.append('linkId', linkId)
+        formData.append('documentType', docName)
+        formData.append('file', file)
+
+        const response = await fetch('/api/portal/upload-document', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error(`Error al subir ${docName}`)
+        }
+
+        uploadedCount++
+        setUploadProgress((uploadedCount / totalDocs) * 100)
+      }
+
+      toast.success("Todos los documentos se subieron correctamente")
+      onNext()
+    } catch (error) {
+      console.error("Error uploading documents:", error)
+      toast.error("Error al subir documentos. Intenta de nuevo.")
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -47,6 +102,16 @@ export function DocumentUploadStep({
           Por favor sube los siguientes documentos en formato PDF o imagen.
         </p>
       </div>
+
+      {isUploading && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span>Subiendo documentos...</span>
+            <span>{Math.round(uploadProgress)}%</span>
+          </div>
+          <Progress value={uploadProgress} />
+        </div>
+      )}
 
       <div className="space-y-4">
         {documentsRequired.map((docName) => {
@@ -59,7 +124,7 @@ export function DocumentUploadStep({
               className={cn(
                 "relative rounded-lg border-2 border-dashed p-4 transition-colors",
                 isUploaded
-                  ? "border-green-500 bg-green-50"
+                  ? "border-green-500 bg-green-50 dark:bg-green-950/10"
                   : "border-muted-foreground/25 hover:border-muted-foreground/50"
               )}
               onDragOver={(e) => e.preventDefault()}
@@ -99,6 +164,7 @@ export function DocumentUploadStep({
                   variant={isUploaded ? "outline" : "secondary"}
                   size="sm"
                   onClick={() => fileInputRefs.current[docName]?.click()}
+                  disabled={isUploading}
                 >
                   {isUploaded ? (
                     "Cambiar"
@@ -116,10 +182,20 @@ export function DocumentUploadStep({
       </div>
 
       <div className="flex justify-between pt-4">
-        <Button type="button" variant="outline" onClick={onBack}>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onBack}
+          disabled={isUploading}
+        >
           Atrás
         </Button>
-        <Button type="button" onClick={onNext} disabled={!allUploaded}>
+        <Button 
+          onClick={handleSubmit} 
+          disabled={!allUploaded || isUploading}
+          className="min-w-32"
+        >
+          {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Continuar
         </Button>
       </div>

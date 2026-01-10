@@ -15,6 +15,8 @@ import {
   Mail,
   Calendar,
   Loader2,
+  Eye,
+  Archive,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -30,6 +32,9 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useClient } from "@/hooks/use-clients"
 import type { Client as ClientType } from "@/lib/supabase/database.types"
+import { toast } from "sonner"
+import { DocumentPreviewDialog } from "@/components/dashboard/document-preview-dialog"
+import { generateExpedienteZip, downloadFile, downloadBlob } from "@/lib/utils/file-download"
 
 interface ClientExpedienteProps {
   clientId: string
@@ -41,6 +46,7 @@ interface ClientDocument {
   name: string
   uploadedAt: string
   size: string
+  url?: string
 }
 
 interface QuestionAnswer {
@@ -57,9 +63,24 @@ const statusConfig: Record<ClientStatus, { label: string; variant: "default" | "
 export function ClientExpediente({ clientId }: ClientExpedienteProps) {
   const { client, loading, error } = useClient(clientId)
   
-  // TODO: Fetch documents and answers from API
-  const documents: ClientDocument[] = []
-  const questionnaire: QuestionAnswer[] = []
+  // Transform client data to component format
+  const documents: ClientDocument[] = React.useMemo(() => {
+    if (!client?.client_documents) return []
+    return client.client_documents.map((doc: any) => ({
+      name: doc.document_type,
+      uploadedAt: new Date(doc.uploaded_at).toLocaleDateString("es-MX"),
+      size: doc.file_size_bytes ? `${(doc.file_size_bytes / 1024).toFixed(0)} KB` : "—",
+      url: doc.file_url,
+    }))
+  }, [client])
+  
+  const questionnaire: QuestionAnswer[] = React.useMemo(() => {
+    if (!client?.client_answers) return []
+    return client.client_answers.map((ans: any) => ({
+      question: ans.question?.question_text || "Pregunta",
+      answer: ans.answer_text,
+    }))
+  }, [client])
   
   if (loading) {
     return (
@@ -88,24 +109,116 @@ function ClientExpedienteContent({
   documents, 
   questionnaire 
 }: { 
-  client: ClientType
-  documents: ClientDocument[]
+  client: ClientType & { client_links?: any[] }
+  documents: (ClientDocument & { url?: string })[]
   questionnaire: QuestionAnswer[]
 }) {
+  const [previewDoc, setPreviewDoc] = React.useState<{ open: boolean; name: string; url: string }>({ 
+    open: false, 
+    name: "", 
+    url: "" 
+  })
+  const [downloadingExpediente, setDownloadingExpediente] = React.useState(false)
+  
   const clientStatus = (client.status as ClientStatus) || 'pending'
   const status = statusConfig[clientStatus] || statusConfig.pending
-  const portalLink = typeof window !== 'undefined' 
-    ? `${window.location.origin}/sala/${client.id}` 
+  
+  // Get magic link token from client_links
+  const activeLinkToken = React.useMemo(() => {
+    if (!client.client_links || client.client_links.length === 0) return null
+    // Prefer active links, but fallback to most recent link for viewing purposes
+    const activeLink = client.client_links.find((link: any) => !link.revoked_at)
+    if (activeLink) return { token: activeLink.magic_link_token, isRevoked: false }
+    
+    // If no active link, show the most recent one (even if revoked)
+    const mostRecentLink = [...client.client_links].sort((a: any, b: any) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0]
+    return mostRecentLink ? { token: mostRecentLink.magic_link_token, isRevoked: true } : null
+  }, [client.client_links])
+  
+  const portalLink = typeof window !== 'undefined' && activeLinkToken
+    ? `${window.location.origin}/sala/${activeLinkToken.token}` 
     : ''
 
   const handleCopyLink = () => {
+    if (!portalLink) {
+      toast.error("No hay enlace disponible para este cliente")
+      return
+    }
+    if (activeLinkToken?.isRevoked) {
+      toast.warning("Este enlace está revocado. El portal ya fue completado.")
+      return
+    }
     navigator.clipboard.writeText(portalLink)
-    // TODO: Show toast notification
+    toast.success("Enlace copiado al portapapeles")
   }
 
   const handleSendReminder = () => {
-    // TODO: Implement send reminder
-    console.log("Send reminder to:", client.client_email)
+    // TODO: Implement send reminder via email
+    if (!client.client_email) {
+      toast.error("Este cliente no tiene correo electrónico registrado")
+      return
+    }
+    toast.info("Funcionalidad de recordatorio próximamente")
+  }
+
+  const handleDownloadExpediente = async () => {
+    setDownloadingExpediente(true)
+    const loadingToast = toast.loading("Generando expediente...")
+    
+    try {
+      const zipBlob = await generateExpedienteZip({
+        clientName: client.client_name,
+        clientEmail: client.client_email,
+        caseName: client.case_name,
+        createdAt: client.created_at,
+        completedAt: client.completed_at,
+        signatureTimestamp: client.signature_timestamp,
+        signedName: (client.signature_data as any)?.typed_name,
+        documents,
+        questionnaire,
+      })
+      
+      const filename = `Expediente_${client.client_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`
+      downloadBlob(zipBlob, filename)
+      
+      toast.dismiss(loadingToast)
+      toast.success("Expediente descargado correctamente")
+    } catch (error) {
+      console.error("Error generating expediente:", error)
+      toast.dismiss(loadingToast)
+      toast.error("Error al generar el expediente")
+    } finally {
+      setDownloadingExpediente(false)
+    }
+  }
+
+  const handlePreviewDocument = (doc: ClientDocument & { url?: string }) => {
+    if (!doc.url) {
+      toast.error("No se puede previsualizar este documento")
+      return
+    }
+    setPreviewDoc({ open: true, name: doc.name, url: doc.url })
+  }
+
+  const handleDownloadDocument = async (doc: ClientDocument & { url?: string }) => {
+    if (!doc.url) {
+      toast.error("No se puede descargar este documento")
+      return
+    }
+    const extension = doc.url.split('.').pop()?.split('?')[0] || 'bin'
+    const filename = `${doc.name}.${extension}`
+    
+    const loadingToast = toast.loading("Descargando documento...")
+    try {
+      await downloadFile(doc.url, filename)
+      toast.dismiss(loadingToast)
+      toast.success("Documento descargado")
+    } catch (error) {
+      toast.dismiss(loadingToast)
+      toast.error("Error al descargar el documento")
+    }
   }
 
   return (
@@ -144,8 +257,17 @@ function ClientExpedienteContent({
           </Button>
         )}
         {clientStatus === "completed" && (
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleDownloadExpediente}
+            disabled={downloadingExpediente}
+          >
+            {downloadingExpediente ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Archive className="mr-2 h-4 w-4" />
+            )}
             Descargar expediente
           </Button>
         )}
@@ -237,9 +359,24 @@ function ClientExpedienteContent({
                           </p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {doc.url && (
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handlePreviewDocument(doc)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleDownloadDocument(doc)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -316,6 +453,17 @@ function ClientExpedienteContent({
           </Card>
         </TabsContent>
       </Tabs>
+
+      <DocumentPreviewDialog
+        open={previewDoc.open}
+        onOpenChange={(open) => setPreviewDoc({ ...previewDoc, open })}
+        documentName={previewDoc.name}
+        documentUrl={previewDoc.url}
+        onDownload={() => {
+          const doc = documents.find(d => d.url === previewDoc.url)
+          if (doc) handleDownloadDocument(doc)
+        }}
+      />
     </div>
   )
 }
