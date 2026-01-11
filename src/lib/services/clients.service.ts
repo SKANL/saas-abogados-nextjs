@@ -320,12 +320,28 @@ export const clientsService: IClientsService = {
     recentActivity: Client[]
   }>> {
     try {
-      // Get counts
+      // Get counts (exclude soft-deleted clients)
       const [totalResult, pendingResult, completedResult, recentResult] = await Promise.all([
-        supabase.from('clients').select('*', { count: 'exact', head: true }),
-        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-        supabase.from('clients').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null),
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending')
+          .is('deleted_at', null),
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed')
+          .is('deleted_at', null),
+        supabase
+          .from('clients')
+          .select('*')
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
+          .limit(5),
       ])
 
       if (recentResult.error) {

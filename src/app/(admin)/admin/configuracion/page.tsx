@@ -1,15 +1,15 @@
-import { GlobalSettingsForm } from "@/components/forms/global-settings-form"
+import { SystemSettings } from "@/components/admin/system-settings"
 
-export default function ConfiguracionAdminPage() {
+export default function ConfiguracionPage() {
   return (
     <div className="flex flex-col gap-4 p-4 md:gap-6 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuración Global</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Configuración del Sistema</h1>
         <p className="text-muted-foreground">
-          Ajustes generales que aplican a todo el despacho
+          Configuración avanzada y preferencias globales
         </p>
       </div>
-      <GlobalSettingsForm />
+      <SystemSettings />
     </div>
   )
 }

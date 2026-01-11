@@ -8,6 +8,7 @@ import {
   Settings,
   Mail,
   Eye,
+  Loader2,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -28,40 +29,69 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-type ActionType = "login" | "register" | "create_sala" | "update_profile" | "send_email" | "view_client"
-
 interface AuditLog {
   id: string
-  userId: string
-  userName: string
-  action: ActionType
-  details: string
-  ip: string
-  timestamp: string
-}
-
-const actionConfig: Record<ActionType, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  login: { label: "Inicio sesión", icon: LogIn, color: "bg-blue-100 text-blue-700" },
-  register: { label: "Registro", icon: UserPlus, color: "bg-green-100 text-green-700" },
-  create_sala: { label: "Crear sala", icon: FileText, color: "bg-purple-100 text-purple-700" },
-  update_profile: { label: "Actualizar perfil", icon: Settings, color: "bg-orange-100 text-orange-700" },
-  send_email: { label: "Enviar correo", icon: Mail, color: "bg-pink-100 text-pink-700" },
-  view_client: { label: "Ver cliente", icon: Eye, color: "bg-gray-100 text-gray-700" },
+  user_id: string | null
+  action: string
+  resource_type: string | null
+  resource_id: string | null
+  client_id: string | null
+  details: any
+  created_at: string
 }
 
 export function AuditLogsTable() {
   const [search, setSearch] = React.useState("")
   const [actionFilter, setActionFilter] = React.useState<string>("all")
-  // TODO: Fetch audit logs from API
-  const logs: AuditLog[] = []
+  const [logs, setLogs] = React.useState<AuditLog[]>([])
+  const [loading, setLoading] = React.useState(true)
+
+  React.useEffect(() => {
+    async function fetchLogs() {
+      try {
+        const response = await fetch('/api/admin/audit-logs')
+        if (response.ok) {
+          const data = await response.json()
+          setLogs(data.logs || [])
+        }
+      } catch (error) {
+        console.error('Error fetching audit logs:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLogs()
+  }, [])
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
-      log.userName.toLowerCase().includes(search.toLowerCase()) ||
-      log.details.toLowerCase().includes(search.toLowerCase())
+      log.action.toLowerCase().includes(search.toLowerCase()) ||
+      log.resource_type?.toLowerCase().includes(search.toLowerCase()) ||
+      JSON.stringify(log.details).toLowerCase().includes(search.toLowerCase())
     const matchesAction = actionFilter === "all" || log.action === actionFilter
     return matchesSearch && matchesAction
   })
+
+  function formatDate(dateString: string) {
+    const date = new Date(dateString)
+    return new Intl.DateTimeFormat('es-MX', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(date)
+  }
+
+  function getActionBadge(action: string) {
+    const actionLower = action.toLowerCase()
+    if (actionLower.includes('create')) {
+      return <Badge variant="default">{action}</Badge>
+    } else if (actionLower.includes('update')) {
+      return <Badge variant="secondary">{action}</Badge>
+    } else if (actionLower.includes('delete')) {
+      return <Badge variant="destructive">{action}</Badge>
+    }
+    return <Badge variant="outline">{action}</Badge>
+  }
 
   return (
     <div className="space-y-4">
@@ -73,14 +103,14 @@ export function AuditLogsTable() {
           className="max-w-sm"
         />
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-45">
             <SelectValue placeholder="Filtrar por acción" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas las acciones</SelectItem>
-            {Object.entries(actionConfig).map(([key, config]) => (
-              <SelectItem key={key} value={key}>
-                {config.label}
+            {Array.from(new Set(logs.map(log => log.action))).map(action => (
+              <SelectItem key={action} value={action}>
+                {action}
               </SelectItem>
             ))}
           </SelectContent>
@@ -90,42 +120,45 @@ export function AuditLogsTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Usuario</TableHead>
               <TableHead>Acción</TableHead>
+              <TableHead>Tipo de recurso</TableHead>
               <TableHead>Detalles</TableHead>
-              <TableHead>IP</TableHead>
               <TableHead>Fecha/Hora</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.length === 0 ? (
+            {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={4} className="text-center">
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Cargando logs...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : filteredLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                   No se encontraron registros
                 </TableCell>
               </TableRow>
             ) : (
-              filteredLogs.map((log) => {
-                const actionInfo = actionConfig[log.action]
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">{log.userName}</TableCell>
-                    <TableCell>
-                      <Badge className={actionInfo.color} variant="secondary">
-                        <actionInfo.icon className="mr-1 h-3 w-3" />
-                        {actionInfo.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {log.details}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{log.ip}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.timestamp}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+              filteredLogs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell>
+                    {getActionBadge(log.action)}
+                  </TableCell>
+                  <TableCell>
+                    {log.resource_type || '-'}
+                  </TableCell>
+                  <TableCell className="max-w-50 truncate">
+                    {log.details ? JSON.stringify(log.details) : '-'}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatDate(log.created_at)}
+                  </TableCell>
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>

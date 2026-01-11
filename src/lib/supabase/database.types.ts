@@ -1,11 +1,3 @@
-/**
- * Database Types - Generated from Supabase Schema
- * 
- * Auto-generated from project: jivsdcwwzhyhorhsmyex
- * Generated on: 2026-01-09
- * Updated: 2026-01-09 - Added client_email, custom_message, expiration_days
- */
-
 export type Json =
   | string
   | number
@@ -15,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   public: {
     Tables: {
       audit_logs: {
@@ -142,6 +139,7 @@ export type Database = {
           last_accessed_at: string | null
           magic_link_token: string
           revoked_at: string | null
+          user_id: string | null
         }
         Insert: {
           access_count?: number | null
@@ -152,6 +150,7 @@ export type Database = {
           last_accessed_at?: string | null
           magic_link_token: string
           revoked_at?: string | null
+          user_id?: string | null
         }
         Update: {
           access_count?: number | null
@@ -162,6 +161,7 @@ export type Database = {
           last_accessed_at?: string | null
           magic_link_token?: string
           revoked_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -187,12 +187,14 @@ export type Database = {
           expiration_days: number | null
           id: string
           link_used: boolean | null
+          organization_id: string | null
           questionnaire_template_id: string | null
           required_documents: string[] | null
           signature_data: Json | null
           signature_hash: string | null
           signature_ip: string | null
           signature_timestamp: string | null
+          signed_name: string | null
           status: string
           user_id: string
         }
@@ -209,12 +211,14 @@ export type Database = {
           expiration_days?: number | null
           id?: string
           link_used?: boolean | null
+          organization_id?: string | null
           questionnaire_template_id?: string | null
           required_documents?: string[] | null
           signature_data?: Json | null
           signature_hash?: string | null
           signature_ip?: string | null
           signature_timestamp?: string | null
+          signed_name?: string | null
           status?: string
           user_id: string
         }
@@ -231,12 +235,14 @@ export type Database = {
           expiration_days?: number | null
           id?: string
           link_used?: boolean | null
+          organization_id?: string | null
           questionnaire_template_id?: string | null
           required_documents?: string[] | null
           signature_data?: Json | null
           signature_hash?: string | null
           signature_ip?: string | null
           signature_timestamp?: string | null
+          signed_name?: string | null
           status?: string
           user_id?: string
         }
@@ -246,6 +252,13 @@ export type Database = {
             columns: ["contract_template_id"]
             isOneToOne: false
             referencedRelation: "contract_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -325,38 +338,237 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invitation_token: string
+          invited_by: string
+          invited_email_match_required: boolean | null
+          organization_id: string | null
+          revoked_at: string | null
+          role: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invitation_token: string
+          invited_by: string
+          invited_email_match_required?: boolean | null
+          organization_id?: string | null
+          revoked_at?: string | null
+          role: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string
+          invited_email_match_required?: boolean | null
+          organization_id?: string | null
+          revoked_at?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          billing_address: Json | null
+          created_at: string | null
+          id: string
+          logo_url: string | null
+          max_clients_per_lawyer: number | null
+          max_lawyers: number | null
+          max_storage_gb: number | null
+          name: string
+          owner_id: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          slug: string
+          status: string | null
+          subscription_plan: string | null
+          tax_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_address?: Json | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          max_clients_per_lawyer?: number | null
+          max_lawyers?: number | null
+          max_storage_gb?: number | null
+          name: string
+          owner_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          slug: string
+          status?: string | null
+          subscription_plan?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_address?: Json | null
+          created_at?: string | null
+          id?: string
+          logo_url?: string | null
+          max_clients_per_lawyer?: number | null
+          max_lawyers?: number | null
+          max_storage_gb?: number | null
+          name?: string
+          owner_id?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          slug?: string
+          status?: string | null
+          subscription_plan?: string | null
+          tax_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      permissions: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
+          bio: string | null
           calendar_link: string | null
           created_at: string | null
+          email_notifications: boolean | null
           firm_logo_url: string | null
           firm_name: string
+          full_name: string | null
           id: string
+          language: string | null
+          last_login_at: string | null
+          license_number: string | null
+          max_clients: number | null
+          max_storage_mb: number | null
+          onboarding_completed: boolean | null
+          organization_id: string | null
+          phone: string | null
+          profile_photo_url: string | null
+          role: string | null
+          status: string | null
+          subscription_expires_at: string | null
+          subscription_plan: string | null
           theme_mode: string | null
+          timezone: string | null
+          trial_ends_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bio?: string | null
           calendar_link?: string | null
           created_at?: string | null
+          email_notifications?: boolean | null
           firm_logo_url?: string | null
           firm_name?: string
+          full_name?: string | null
           id?: string
+          language?: string | null
+          last_login_at?: string | null
+          license_number?: string | null
+          max_clients?: number | null
+          max_storage_mb?: number | null
+          onboarding_completed?: boolean | null
+          organization_id?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          role?: string | null
+          status?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           theme_mode?: string | null
+          timezone?: string | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          bio?: string | null
           calendar_link?: string | null
           created_at?: string | null
+          email_notifications?: boolean | null
           firm_logo_url?: string | null
           firm_name?: string
+          full_name?: string | null
           id?: string
+          language?: string | null
+          last_login_at?: string | null
+          license_number?: string | null
+          max_clients?: number | null
+          max_storage_mb?: number | null
+          onboarding_completed?: boolean | null
+          organization_id?: string | null
+          phone?: string | null
+          profile_photo_url?: string | null
+          role?: string | null
+          status?: string | null
+          subscription_expires_at?: string | null
+          subscription_plan?: string | null
           theme_mode?: string | null
+          timezone?: string | null
+          trial_ends_at?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questionnaire_templates: {
         Row: {
@@ -411,12 +623,44 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          permission_id: string
+          role: string
+        }
+        Insert: {
+          permission_id: string
+          role: string
+        }
+        Update: {
+          permission_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_permission_id_fkey"
+            columns: ["permission_id"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      custom_access_token_hook: { Args: { event: Json }; Returns: Json }
+      get_user_role: { Args: never; Returns: string }
+      has_permission: {
+        Args: { permission_name: string; user_role: string }
+        Returns: boolean
+      }
+      validate_invitation_token: {
+        Args: { token: string; user_email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
@@ -427,71 +671,178 @@ export type Database = {
   }
 }
 
-// ===========================================
-// Convenience type aliases
-// ===========================================
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type Client = Database['public']['Tables']['clients']['Row']
-export type ClientInsert = Database['public']['Tables']['clients']['Insert']
-export type ClientUpdate = Database['public']['Tables']['clients']['Update']
-
-// ClientInsert without user_id (added automatically by service)
-export type ClientCreateInput = Omit<ClientInsert, 'user_id'>
-
-export type ClientLink = Database['public']['Tables']['client_links']['Row']
-export type ClientLinkInsert = Database['public']['Tables']['client_links']['Insert']
-
-export type ClientDocument = Database['public']['Tables']['client_documents']['Row']
-export type ClientDocumentInsert = Database['public']['Tables']['client_documents']['Insert']
-
-export type ClientAnswer = Database['public']['Tables']['client_answers']['Row']
-export type ClientAnswerInsert = Database['public']['Tables']['client_answers']['Insert']
-
-export type ContractTemplate = Database['public']['Tables']['contract_templates']['Row']
-export type ContractTemplateInsert = Database['public']['Tables']['contract_templates']['Insert']
-
-export type QuestionnaireTemplate = Database['public']['Tables']['questionnaire_templates']['Row']
-export type QuestionnaireTemplateInsert = Database['public']['Tables']['questionnaire_templates']['Insert']
-
-export type Question = Database['public']['Tables']['questions']['Row']
-export type QuestionInsert = Database['public']['Tables']['questions']['Insert']
-
-export type AuditLog = Database['public']['Tables']['audit_logs']['Row']
-export type AuditLogInsert = Database['public']['Tables']['audit_logs']['Insert']
-
-export type EmailNotification = Database['public']['Tables']['email_notifications']['Row']
-
-// ===========================================
-// Extended types for joins
-// ===========================================
-
-export type ClientWithLink = Client & {
-  client_links?: ClientLink[]
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+
+// ============================================================================
+// Convenience Type Exports
+// ============================================================================
+
+export type Client = Tables<'clients'>
+export type Profile = Tables<'profiles'>
+export type Organization = Tables<'organizations'>
+export type Invitation = Tables<'invitations'>
+export type ClientLink = Tables<'client_links'>
+export type ClientAnswer = Tables<'client_answers'>
+export type ClientDocument = Tables<'client_documents'>
+export type Question = Tables<'questions'>
+export type QuestionnaireTemplate = Tables<'questionnaire_templates'>
+export type ContractTemplate = Tables<'contract_templates'>
+export type AuditLog = Tables<'audit_logs'>
+export type EmailNotification = Tables<'email_notifications'>
+export type Permission = Tables<'permissions'>
+export type RolePermission = Tables<'role_permissions'>
+
+// Insert and Update Types
+export type ClientInsert = TablesInsert<'clients'>
+export type ClientUpdate = TablesUpdate<'clients'>
+export type ProfileInsert = TablesInsert<'profiles'>
+export type ProfileUpdate = TablesUpdate<'profiles'>
+export type OrganizationInsert = TablesInsert<'organizations'>
+export type OrganizationUpdate = TablesUpdate<'organizations'>
+export type InvitationInsert = TablesInsert<'invitations'>
+export type InvitationUpdate = TablesUpdate<'invitations'>
+export type ClientAnswerInsert = TablesInsert<'client_answers'>
+export type ClientDocumentInsert = TablesInsert<'client_documents'>
+export type ClientLinkInsert = TablesInsert<'client_links'>
+export type QuestionInsert = TablesInsert<'questions'>
+export type QuestionnaireTemplateInsert = TablesInsert<'questionnaire_templates'>
+export type ContractTemplateInsert = TablesInsert<'contract_templates'>
+export type AuditLogInsert = TablesInsert<'audit_logs'>
+export type EmailNotificationInsert = TablesInsert<'email_notifications'>
+
+// Aliases for common patterns
+export type ClientCreateInput = Omit<ClientInsert, 'user_id' | 'id' | 'created_at' | 'completed_at' | 'signature_data' | 'signature_hash' | 'signature_ip' | 'signature_timestamp' | 'signed_name' | 'contract_signed_url' | 'link_used'>
+export type ClientUpdateInput = ClientUpdate
+
+// Extended Types
 export type ClientWithDetails = Client & {
-  contract_template?: ContractTemplate | null
-  questionnaire_template?: (QuestionnaireTemplate & { questions?: Question[] }) | null
   client_links?: ClientLink[]
-  client_documents?: ClientDocument[]
   client_answers?: ClientAnswer[]
+  client_documents?: ClientDocument[]
 }
 
-export type QuestionnaireWithQuestions = QuestionnaireTemplate & {
-  questions?: Question[]
-}
-
-// Signature data type
 export type SignatureData = {
-  dataUrl?: string
-  typed_name?: string
+  typed_name: string
   timestamp: string
-  ip?: string
 }
-
-// Client status type
-export type ClientStatus = 'pending' | 'completed'
